@@ -23,3 +23,37 @@ pthread_mutex_t semaforoCola;  //accesos a la cola
 int contadorPasajeros;
 FILE *logFile;
 char *logFileName ="registroTiempos.log";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//Metodo para escribir en el log
+void writeLogMessage(char *id, char *msg){
+
+	//Calculamos la hora actual
+	time_t now = time(0);
+	struct tm *tlocal = localtime(&now);
+	char stnow[19];
+	strftime(stnow, 19, "%d/%m/%y %H:%M:%S", tlocal);
+	
+	//Escribimos en el log
+	logFile = fopen(logFileName, "a");
+	fprintf(logFile, "[%s] %s: %s\n", stnow, id, msg);
+	//Para seguir el logfile por pantalla
+	printf("###logFile:[%s] %s: %s\n", stnow, id, msg); 
+	fclose(logFile);	
+}
