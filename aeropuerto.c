@@ -18,7 +18,7 @@
 #define PUESTOS 2
 
 //VARIABLES GLOBALES
-pthread_mutex_t entradaFacturacion ; //Accesos a punteroPasajeros
+pthread_mutex_t entradaFacturacion ; //Accesos a punteroUsuarios
 pthread_mutex_t semaforoLog;  //Accesos al fichero de log
 pthread_mutex_t semaforoCola;  //Accesos a la cola
 pthread_mutex_t entradaSeguridad; //Accesos al control de seguridad
@@ -28,8 +28,9 @@ int usuariosAtentidosPuestos[PUESTOS]; //Pasajeros atendidos por cada puesto
 int colaPuestos[USUARIOS]; //Pasajeros en una cola unica
 int usuariosAtendiendo;
 int usuariosActualesTotal;
+int finalizaPrograma;
 FILE *logFile;
-char *logFileName ="registroTiempos.log";
+char *logFileName = "registroTiempos.log";
 
 
 //FUNCIONES
@@ -38,6 +39,7 @@ void nuevoUsuarioVip(int sig);
 void iniciaVariablesUsuario(int posicionPuntero, int id, int puesto, int normal); //Hay normales y vip
 void *AccionesUsuario(void *arg);
 void *AccionesFacturador(void *arg);
+void *AccionesAgenteSeguridad (void *arg);
 void usuariosActuales(int sig);
 void embarcar(int sig);
 void writeLogMessage(char *id,char *msg);
@@ -52,6 +54,7 @@ struct usuario {
 	//int esperando_Seguridad (puede ser necesario)
 };
 
+struct usuario *punteroUsuarios;
 
 int main() {
 	char id[10];  
@@ -91,7 +94,47 @@ int main() {
 	contadorUsuarios = 0;  //Va de 0 a USUARIOS-1
 	embarcar = 0;
 	//Igual hay que inicializar los que están esperando por seguridad
+
+
+	int i;
+	for (i = 0; i < PUESTOS; i++){
+		usuariosAtentidosPuestos[i] = 0;
+	}
+
+	for (i = 0; i < USUARIOS; i++){  //Posiciones libres
+		colaPuestos[i] = 0;
+	}
+
+
+	//Reserva de memoria para el puntero de los usuarios
+	punteroUsuarios = (struct usuario*)malloc(USUARIOS*sizeof(struct usuario));
+
+	//Hilos para los dos puestos de facturación
+	pthread_create(&puesto1, NULL, AccionesFacturador, (void *)&idPuesto1);
+	pthread_create(&puesto2, NULL, AccionesFacturador, (void *)&idPuesto2);
+
+	//Se crea el archivo log si no existe
+	//Si existe, se sobreescribe
+	logFile = fopen(logFileName, "w");
+	if(logFile == NULL){
+		char *err = strerror(errno);
+		printf("%s", err);
+		fclose(logFile);
+	}
+
+	writeLogMessage("Bienvenido","Aeropuerto Carles Puigdemon");
+
+	//Espera hasta recibir señal
+	//La señal SIGINT finaliza el programa
+	while(finalizaPrograma != 1){
+		pause();
+	}
+
+	return 0;
 }
+
+
+
 
 
 
