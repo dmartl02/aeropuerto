@@ -59,8 +59,8 @@ struct usuario *punteroUsuarios;
 int main() {
 	char id[10];  
 	char msg[100]; 
-	pthread_t puesto1, puesto2;
-	int idPuesto1, idPuesto2;
+	pthread_t puesto1, puesto2, puestoSeguridad;
+	int idPuesto1, idPuesto2, idPuestoSeguridad;
 
 	int usuariosAtendiendo = 0;
 	int usuariosActualesTotal = 0;
@@ -112,6 +112,7 @@ int main() {
 	//Hilos para los dos puestos de facturación
 	pthread_create(&puesto1, NULL, AccionesFacturador, (void *)&idPuesto1);
 	pthread_create(&puesto2, NULL, AccionesFacturador, (void *)&idPuesto2);
+	pthread_create(&puestoSeguridad, NULL, AccionesAgenteSeguridad, (void *)&idPuestoSeguridad);
 
 	//Se crea el archivo log si no existe
 	//Si existe, se sobreescribe
