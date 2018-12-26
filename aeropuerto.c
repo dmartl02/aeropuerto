@@ -25,6 +25,7 @@ pthread_mutex_t entradaSeguridad; //Accesos al control de seguridad
 int contadorUsuarios;
 int embarca;
 int usuariosAtentidosPuestos[PUESTOS]; //Pasajeros atendidos por cada puesto
+int idUsuarioEsperando; //Usuarios sin atender
 int colaPuestos[USUARIOS]; //Pasajeros en una cola unica
 int usuariosAtendiendo;
 int usuariosActualesTotal;
@@ -138,14 +139,28 @@ int main() {
 
 
 
+void finalizaPrograma(int sig) {
+	char id[10];
+	char msg[100];
 
+	pthread_mutex_lock(&semaforoLog);
 
+	if (idUsuarioEsperando != 0) { //Comprobar si queda algún usuario
+		sprintf(id, "usuario%d", idUsuarioEsperando);
+		sprintf(msg, "El aeropuerto va a cerrar. Me voy a casa.");
+		writeLogMessage(id, msg);
+		
+		pthread_cancel(punteroUsuarios[idUsuarioEsperando-1].usuarioHilo);
+	}
 
+	sprintf(msg, "Han sido atendidos %d usuarios por tarima1 y %d usuarios por tarima2", usuariosAtentidosPuestos[0], usuariosAtentidosPuestos[1]);
+	writeLogMessage("Información", msg);
 
+	writeLogMessage("Final del programa", "El aeropuertoha cerrado");
+	pthread_mutex_unlock(&semaforoLog);
 
-
-
-
+	finalizaPrograma = 1;
+}
 
 
 
