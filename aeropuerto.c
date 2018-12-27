@@ -180,3 +180,57 @@ void writeLogMessage(char *id, char *msg){
 	printf("###logFile:[%s] %s: %s\n", stnow, id, msg); 
 	fclose(logFile);	
 }
+
+//Metodo de las acciones del usuario
+/*void *AccionesUsuario(void *arg){
+    pthread_mutex_lock(&semaforoLog);
+    //TODO logs
+    pthread_mutex_unlock(&semaforoLog);
+    sleep(4);
+    int idUsuario = *(int *)arg;  //numero del usuario (de 1 a USUARIOS)
+
+    //Se le asigna al usuario su puesto en la cola
+    pthread_mutex_lock(&semaforoCola);
+	colaPuestos[idUsuario-1] = idUsuario;
+	pthread_mutex_unlock(&semaforoCola);
+	
+	//Se estudia el comportamiento del usuario mientras espera a facturar
+	while(punteroUsuarios[idUsuario-1].ha_Facturado == 0) {
+	    int estadoAleatorio = generarAleatorio(1, 100);
+	    
+	    if(estadoAleatorio<=20) { //Comprobar si se cansa de esperar
+	        pthread_mutex_lock(&semaforoLog);
+	        //TODO logs
+	        pthread_mutex_unlock(&semaforoLog);
+            //TODO liberar espacio en la cola
+	        pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
+	    } else if(estadoAleatorio<=30) { //Comprobar si se mea
+	        pthread_mutex_lock(&semaforoLog);
+	        //TODO logs
+	        pthread_mutex_unlock(&semaforoLog);
+	        //TODO liberar espacio en la cola
+	        pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
+	    } else {
+	        sleep(4);
+	    }
+	}
+	if (punteroUsuarios[idUsuario-1].ha_Facturado == 1) { //Si ha facturado
+    	pthread_mutex_lock(&entradaSeguridad);
+        //TODO liberar espacio en la cola de facturacion
+    	pthread_mutex_unlock(&entradaSeguridad); 
+    	pthread_mutex_lock(&semaforoLog);
+    	//TODO log deja el control
+    	pthread_mutex_unlock(&semaforoLog);
+        printf("He abandonado el control");//TODO cambiar el mensaje
+        pthread_mutex_lock(&semaforoLog);
+    	//TODO log mensaje
+    	pthread_mutex_unlock(&semaforoLog);
+	} else if (punteroUsuarios[idUsuario-1].ha_Facturado == 0) { //No ha facutrado
+	    //TODO liberar espacio en la cola
+	    pthread_mutex_lock(&semaforoLog);
+    	//TODO log se va
+    	pthread_mutex_unlock(&semaforoLog);
+	}
+	pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
+}
+*/
