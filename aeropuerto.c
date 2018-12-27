@@ -165,7 +165,8 @@ void *AccionesUsuario(void *arg){
 			sprintf(msg, "Se cansa de esperar y se va del aeropuerto");
 			writeLogMessage(id, msg);
 	        pthread_mutex_unlock(&semaforoLog);
-            //TODO liberar espacio en la cola
+          
+          	//Se libera espacio en la cola
 	        pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
 
 	    } else if(estadoAleatorio<=30){ //Comprobar si va al baño
@@ -174,7 +175,8 @@ void *AccionesUsuario(void *arg){
 			sprintf(msg, "Va al baño");
 			writeLogMessage(id, msg);
 	        pthread_mutex_unlock(&semaforoLog);
-	        //TODO liberar espacio en la cola
+	        
+	        //Se libera espacio en la cola
 	        pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
 
 	    } else{
@@ -182,28 +184,34 @@ void *AccionesUsuario(void *arg){
 	    }
 	}
 
-/*
+
+	//Comprobar si ha facturado ya o no
 	if(punteroUsuarios[idUsuario-1].ha_Facturado == 1) { //Si ha facturado
     	pthread_mutex_lock(&entradaSeguridad);
-        //TODO liberar espacio en la cola de facturacion
+        pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
     	pthread_mutex_unlock(&entradaSeguridad); 
+    /*
+    //No sé cómo van estos dos logs
     	pthread_mutex_lock(&semaforoLog);
     	//TODO log deja el control
     	pthread_mutex_unlock(&semaforoLog);
-        printf("He abandonado el control");//TODO cambiar el mensaje
+       
         pthread_mutex_lock(&semaforoLog);
     	//TODO log mensaje
     	pthread_mutex_unlock(&semaforoLog);
-
-	} else if(punteroUsuarios[idUsuario-1].ha_Facturado == 0){ //No ha facutrado
-	    //TODO liberar espacio en la cola
+	*/
+	} else if(punteroUsuarios[idUsuario-1].ha_Facturado == 0){ //No ha facturado
 	    pthread_mutex_lock(&semaforoLog);
-    	//TODO log se va
+    	sprintf(id, "usuario%d", idUsuario);
+		sprintf(msg, "Se va porque no ha facturado");
+		writeLogMessage(id, msg);
     	pthread_mutex_unlock(&semaforoLog);
+
+    	pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
 	}
 
-	pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
-*/
+	
+
 }
 
 
@@ -225,7 +233,7 @@ void finalizaPrograma(int sig) {
 	sprintf(msg, "Han sido atendidos %d usuarios por tarima1 y %d usuarios por tarima2", usuariosAtentidosPuestos[0], usuariosAtentidosPuestos[1]);
 	writeLogMessage("Información", msg);
 
-	writeLogMessage("Final del programa", "El aeropuertoha cerrado");
+	writeLogMessage("Final del programa", "El aeropuerto ha cerrado");
 	pthread_mutex_unlock(&semaforoLog);
 
 	finalizaPrograma = 1;
