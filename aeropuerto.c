@@ -135,20 +135,20 @@ int main() {
 	return 0;
 }
 
-/*
+
 //Metodo de las acciones del usuario
 void *AccionesUsuario(void *arg){
 	char id[10];
 	char msg[100];
-    int idUsuario = *(int *)arg;  //numero del usuario (de 1 a USUARIOS)
+    int idUsuario = *(int *)arg;  //Numero del usuario (de 1 a USUARIOS)
 
     pthread_mutex_lock(&semaforoLog);
-    //TODO logs
+	sprintf(id, "usuario%d", idUsuario);
+	sprintf(msg, "Ha llegado al aeropuerto, factura en el puesto %d", punteroUsuarios[idUsuario-1-1].puesto_Asignado);
+	writeLogMessage(id, msg);
     pthread_mutex_unlock(&semaforoLog);
-    sleep(4);
-    char id[10];
-	char msg[100];
-    int idUsuario = *(int *)arg;  //De 1 a USUARIOS
+
+    sleep(2);
 
     //Se le asigna al usuario su puesto en la cola
     pthread_mutex_lock(&semaforoCola);
@@ -161,21 +161,28 @@ void *AccionesUsuario(void *arg){
 	    
 	    if(estadoAleatorio<=20){ //Comprobar si se cansa de esperar
 	        pthread_mutex_lock(&semaforoLog);
-	        //TODO logs
+	        sprintf(id, "usuario%d", idUsuario);
+			sprintf(msg, "Se cansa de esperar y se va del aeropuerto");
+			writeLogMessage(id, msg);
 	        pthread_mutex_unlock(&semaforoLog);
             //TODO liberar espacio en la cola
 	        pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
-	    } else if(estadoAleatorio<=30){ //Comprobar si se mea
+
+	    } else if(estadoAleatorio<=30){ //Comprobar si va al baño
 	        pthread_mutex_lock(&semaforoLog);
-	        //TODO logs
+	        sprintf(id, "usuario%d", idUsuario);
+			sprintf(msg, "Va al baño");
+			writeLogMessage(id, msg);
 	        pthread_mutex_unlock(&semaforoLog);
 	        //TODO liberar espacio en la cola
 	        pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
+
 	    } else{
 	        sleep(4);
 	    }
 	}
 
+/*
 	if(punteroUsuarios[idUsuario-1].ha_Facturado == 1) { //Si ha facturado
     	pthread_mutex_lock(&entradaSeguridad);
         //TODO liberar espacio en la cola de facturacion
@@ -196,8 +203,9 @@ void *AccionesUsuario(void *arg){
 	}
 
 	pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
-}
 */
+}
+
 
 
 void finalizaPrograma(int sig) {
