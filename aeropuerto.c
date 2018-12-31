@@ -136,6 +136,7 @@ int main() {
 }
 
 
+//FALTAN COSAS
 //Metodo de las acciones del usuario
 void *AccionesUsuario(void *arg){
 	char id[10];
@@ -209,9 +210,45 @@ void *AccionesUsuario(void *arg){
 
     	pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
 	}
+}
 
-	
+//FALTAN COSAS
+void *AccionesAgenteSeguridad (void *arg){
+    char id[10];
+	char msg[100];
+	int numUsuarios, seHaAtendidoAAlguien, i, controlAleatorio, tiempoEnElControlAleatorio;
+	pthread_mutex_lock(&entradaSeguridad);
+	numUsuarios = *(int *)arg;
+	seHaAtendidoAAlguien = 0;
+	i = 0;
+	while(i<numUsuarios && seHaAtendidoAAlguien!=1) { //TODO QUEDARSE ESPERANDO A QUE HAYA ALGUIEN
+	    if(punteroUsuarios[i].esperando_Seguridad){
 
+	       pthread_mutex_lock(&semaforoLog);
+	       sprintf(id, "usuario%d", punteroUsuarios[i].id);
+	       sprintf(msg, "Ha entrado al control de seguridad");
+	       writeLogMessage(id, msg);
+	       pthread_mutex_unlock(&semaforoLog);
+
+	       controlAleatorio = numeroAleatorio(1, 100);
+	       if(numeroAleatorio<=60){ //Situación normal
+	           tiempoEnElControlAleatorio = numeroAleatorio(2, 3);
+	       } else {  //Inspección
+	           tiempoEnElControlAleatorio = numeroAleatorio(10, 15);
+	       }
+	       sleep(tiempoEnElControlAleatorio);
+	       seHaAtendidoAAlguien = 1;
+	       
+	       pthread_mutex_lock(&semaforoLog);
+	       sprintf(id, "usuario%d", punteroUsuarios[i].id);
+	       sprintf(msg, "Ha salido del control de seguridad y ha tardado %d segundos", tiempoEnElControlAleatorio);
+	       writeLogMessage(id, msg);
+	       pthread_mutex_unlock(&semaforoLog);
+	        
+	    }
+	}
+	//TODO AVISAR DE QUE HA TERMINADO
+	pthread_mutex_unlock(&entradaSeguridad);
 }
 
 
