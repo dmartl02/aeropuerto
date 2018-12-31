@@ -52,7 +52,7 @@ struct usuario {
 	int id;  //Va de 1 a USUARIOS
 	int ha_Facturado;
 	int puesto_Asignado;
-	//int esperando_Seguridad (puede ser necesario)
+	int esperando_Seguridad
 };
 
 struct usuario *punteroUsuarios;
