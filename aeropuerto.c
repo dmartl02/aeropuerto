@@ -187,7 +187,7 @@ void *AccionesUsuario(void *arg){
     int idUsuario = *(int *)arg;  //Numero del usuario (de 1 a USUARIOS)
 
     pthread_mutex_lock(&semaforoLog);
-	sprintf(id, "usuario%d", idUsuario);
+	sprintf(id, "Usuario_%d", idUsuario);
 	sprintf(msg, "Ha llegado al aeropuerto, factura en el puesto %d", punteroUsuarios[idUsuario-1-1].puesto_Asignado);
 	writeLogMessage(id, msg);
     pthread_mutex_unlock(&semaforoLog);
@@ -206,7 +206,7 @@ void *AccionesUsuario(void *arg){
 	    //Faltan los 3 segundos 
 	    if(estadoAleatorio<=20){ //Comprobar si se cansa de esperar
 	        pthread_mutex_lock(&semaforoLog);
-	        sprintf(id, "usuario%d", idUsuario);
+	        sprintf(id, "Usuario_%d", idUsuario);
 			sprintf(msg, "Se cansa de esperar y se va del aeropuerto");
 			writeLogMessage(id, msg);
 	        pthread_mutex_unlock(&semaforoLog);
@@ -216,7 +216,7 @@ void *AccionesUsuario(void *arg){
 
 	    } else if(estadoAleatorio<=30){ //Comprobar si va al baño
 	        pthread_mutex_lock(&semaforoLog);
-	        sprintf(id, "usuario%d", idUsuario);
+	        sprintf(id, "Usuario_%d", idUsuario);
 			sprintf(msg, "Va al baño");
 			writeLogMessage(id, msg);
 	        pthread_mutex_unlock(&semaforoLog);
@@ -246,7 +246,7 @@ void *AccionesUsuario(void *arg){
     
     //No sé cómo van estos dos logs
     	pthread_mutex_lock(&semaforoLog);
-    	sprintf(id, "usuario%d", idUsuario);
+    	sprintf(id, "Usuario_%d", idUsuario);
 		sprintf(msg, "Deja el control de seguridad");
 		writeLogMessage(id, msg);
     	pthread_mutex_unlock(&semaforoLog);
@@ -254,14 +254,14 @@ void *AccionesUsuario(void *arg){
        	printf("Usuario %d va a embarcar\n", idUsuario);
 
         pthread_mutex_lock(&semaforoLog);
-    	sprintf(id, "usuario%d", idUsuario);
+    	sprintf(id, "Usuario_%d", idUsuario);
 		sprintf(msg, "Va a embarcar");
 		writeLogMessage(id, msg);
     	pthread_mutex_unlock(&semaforoLog);
 	
 	} else if(punteroUsuarios[idUsuario-1].ha_Facturado == 0){ //No ha facturado
 	    pthread_mutex_lock(&semaforoLog);
-    	sprintf(id, "usuario%d", idUsuario);
+    	sprintf(id, "Usuario_%d", idUsuario);
 		sprintf(msg, "Se va porque no ha facturado");
 		writeLogMessage(id, msg);
     	pthread_mutex_unlock(&semaforoLog);
@@ -314,12 +314,12 @@ void *AccionesFacturador(void *arg){
 			pthread_mutex_unlock(&semaforoCola);
 
 			//Calculamos comportamientos
-			comportamientoAleatorio = generarAleatorio(1, 100);
+			eventoAleatorio = generarAleatorio(1, 100);
 
 			//Facturación
 			pthread_mutex_lock(&semaforoLog);
 			sprintf(id, "Puesto%d", idPuesto);
-			sprintf(msg, "usuario_%d facturando", colaPuestos[i]);
+			sprintf(msg, "Usuario_%d facturando", colaPuestos[i]);
 			writeLogMessage(id, msg);
 			pthread_mutex_unlock(&semaforoLog);
 
@@ -329,7 +329,7 @@ void *AccionesFacturador(void *arg){
 				punteroUsuarios[i].ha_Facturado = 1;
 
 				pthread_mutex_lock(&semaforoLog);
-				sprintf(id, "usuario_%d", colaPuestos[i]);
+				sprintf(id, "Usuario_%d", colaPuestos[i]);
 				sprintf(msg, "Ha facturado, todo correcto, tiempo = %d", duermeAleatorio);
 				writeLogMessage(id, msg);
 				pthread_mutex_unlock(&semaforoLog);
@@ -340,7 +340,7 @@ void *AccionesFacturador(void *arg){
 				punteroUsuarios[i].ha_Facturado = 1;
 
 				pthread_mutex_lock(&semaforoLog);
-				sprintf(id, "usuario_%d", colaPuestos[i]);
+				sprintf(id, "Usuario_%d", colaPuestos[i]);
 				sprintf(msg, "Ha facturado pero tiene un exceso de peso, tiempo = %d", duermeAleatorio);
 				writeLogMessage(id, msg);
 				pthread_mutex_unlock(&semaforoLog);
@@ -350,7 +350,7 @@ void *AccionesFacturador(void *arg){
 				sleep(duermeAleatorio);
 
 				pthread_mutex_lock(&semaforoLog);
-				sprintf(id, "usuario_%d", colaPuestos[i]);
+				sprintf(id, "Usuario_%d", colaPuestos[i]);
 				sprintf(msg, "No tiene el visado en regla y no puede facturar, tiempo = %d", duermeAleatorio);
 				writeLogMessage(id, msg);
 				pthread_mutex_unlock(&semaforoLog);
@@ -362,7 +362,7 @@ void *AccionesFacturador(void *arg){
 			if (usuariosAtentidosPuestos[idPuesto-1] % 5 == 0) {
 
 				pthread_mutex_lock(&semaforoLog);
-				sprintf(id, "facturador_%d", idPuesto);
+				sprintf(id, "Facturador_%d", idPuesto);
 				sprintf(msg, "Inicio del descanso. Va a tomarse un café");
 				writeLogMessage(id, msg);
 				pthread_mutex_unlock(&semaforoLog);
@@ -370,7 +370,7 @@ void *AccionesFacturador(void *arg){
 				sleep(10);
 
 				pthread_mutex_lock(&semaforoLog);
-				sprintf(id, "facturador_%d", idPuesto);
+				sprintf(id, "Facturador_%d", idPuesto);
 				sprintf(msg, "Fin del descanso. Vuelve al trabajo.");
 				writeLogMessage(id, msg);
 				pthread_mutex_unlock(&semaforoLog);
@@ -388,39 +388,55 @@ void *AccionesFacturador(void *arg){
 void *AccionesAgenteSeguridad (void *arg){
     char id[10];
 	char msg[100];
-	int numUsuarios, seHaAtendidoAAlguien, i, controlAleatorio, tiempoEnElControlAleatorio;
-	pthread_mutex_lock(&entradaSeguridad);
-	numUsuarios = *(int *)arg;
-	seHaAtendidoAAlguien = 0;
+	int numUsuarios = *(int *)arg;
 	i = 0;
+	int atendidoControl = 0;
+	int eventoControlAleatorio, duermeControlAleatorio;
+	//pthread_mutex_lock(&entradaSeguridad); ¿Aquí es necesario?
+
 	while(i<numUsuarios && seHaAtendidoAAlguien!=1) { //TODO QUEDARSE ESPERANDO A QUE HAYA ALGUIEN
 	    if(punteroUsuarios[i].esperando_Seguridad){
 
-	       pthread_mutex_lock(&semaforoLog);
-	       sprintf(id, "usuario%d", punteroUsuarios[i].id);
-	       sprintf(msg, "Ha entrado al control de seguridad");
-	       writeLogMessage(id, msg);
-	       pthread_mutex_unlock(&semaforoLog);
+	    	pthread_mutex_lock(&semaforoLog);
+       		sprintf(id, "Usuario_%d", punteroUsuarios[i].id);
+       		sprintf(msg, "Entra al control de seguridad");
+       		writeLogMessage(id, msg);
+       		pthread_mutex_unlock(&semaforoLog);
 
-	       controlAleatorio = numeroAleatorio(1, 100);
-	       if(numeroAleatorio<=60){ //Situación normal
-	           tiempoEnElControlAleatorio = numeroAleatorio(2, 3);
-	       } else {  //Inspección
-	           tiempoEnElControlAleatorio = numeroAleatorio(10, 15);
-	       }
-	       sleep(tiempoEnElControlAleatorio);
-	       seHaAtendidoAAlguien = 1;
-	       
-	       pthread_mutex_lock(&semaforoLog);
-	       sprintf(id, "usuario%d", punteroUsuarios[i].id);
-	       sprintf(msg, "Ha salido del control de seguridad y ha tardado %d segundos", tiempoEnElControlAleatorio);
-	       writeLogMessage(id, msg);
-	       pthread_mutex_unlock(&semaforoLog);
-	        
-	    }
-	}
-	//TODO AVISAR DE QUE HA TERMINADO
-	pthread_mutex_unlock(&entradaSeguridad);
+	       	eventoControlAleatorio = generarAleatorio(1,100);
+
+	       	if(eventoControlAleatorio <= 60){ //Pasa el control sin problemas
+	       		duermeControlAleatorio = generarAleatorio(2,3);
+				sleep(duermeControlAleatorio);
+				punteroUsuarios[i].atendidoControl = 1;
+
+				pthread_mutex_lock(&semaforoLog);
+				//Aqui habria que usar ya la cola de la seguridad sprintf(id, "Usuario_%d", cola[i]);
+				sprintf(msg, "Pasa el control de seguridad, tiempo = %d", duermeControlAleatorio);
+				writeLogMessage(id, msg);
+				pthread_mutex_unlock(&semaforoLog);
+
+			} else { //Es inspeccionado en el control
+				duermeControlAleatorio = generarAleatorio(10,15);
+				sleep(duermeControlAleatorio);
+				punteroUsuarios[i].atendidoControl = 1;
+
+				pthread_mutex_lock(&semaforoLog);
+				//Aqui habria que usar ya la cola de la seguridad sprintf(id, "Usuario_%d", cola[i]);
+				sprintf(msg, "Es inspeccionado en el control, tiempo = %d", duermeControlAleatorio);
+				writeLogMessage(id, msg);
+				pthread_mutex_unlock(&semaforoLog);
+			}
+	    
+
+	    	pthread_mutex_lock(&entradaSeguridad);
+			printf(id, "Usuario_%d", punteroUsuarios[i].id);
+       		sprintf(msg, "Abandona el control de seguridad");
+       		writeLogMessage(id, msg);
+       		pthread_mutex_unlock(&semaforoLog);
+
+       	}
+	}		
 }
 
 
@@ -432,7 +448,7 @@ void finalizaPrograma(int sig) {
 	pthread_mutex_lock(&semaforoLog);
 
 	if (idUsuarioEsperando != 0) { //Comprobar si queda algún usuario
-		sprintf(id, "usuario%d", idUsuarioEsperando);
+		sprintf(id, "Usuario_%d", idUsuarioEsperando);
 		sprintf(msg, "El aeropuerto va a cerrar. Me voy a casa.");
 		writeLogMessage(id, msg);
 		
