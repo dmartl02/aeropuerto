@@ -310,8 +310,6 @@ void *AccionesFacturador(void *arg){
 		} else {
 			i = colaPuestos[(j+primerPuestoCola)%USUARIOS]-1;
 
-			usuariosAtentidosPuestos[idPuesto]++; //Usuarios en los puestos
-
 			punteroUsuarios[i].atendidoFacturacion = 1;
 			pthread_mutex_unlock(&semaforoCola);
 
@@ -354,6 +352,26 @@ void *AccionesFacturador(void *arg){
 				pthread_mutex_lock(&semaforoLog);
 				sprintf(id, "usuario_%d", colaPuestos[i]);
 				sprintf(msg, "No tiene el visado en regla y no puede facturar, tiempo = %d", duermeAleatorio);
+				writeLogMessage(id, msg);
+				pthread_mutex_unlock(&semaforoLog);
+			}
+
+			usuariosAtentidosPuestos[idPuesto-1]++; //Usuarios en los puestos
+
+			//Descanso de los facturadores
+			if (usuariosAtentidosPuestos[idPuesto-1] % 5 == 0) {
+
+				pthread_mutex_lock(&semaforoLog);
+				sprintf(id, "facturador_%d", idPuesto);
+				sprintf(msg, "Inicio del descanso. Va a tomarse un café");
+				writeLogMessage(id, msg);
+				pthread_mutex_unlock(&semaforoLog);
+
+				sleep(10);
+
+				pthread_mutex_lock(&semaforoLog);
+				sprintf(id, "facturador_%d", idPuesto);
+				sprintf(msg, "Fin del descanso. Vuelve al trabajo.");
 				writeLogMessage(id, msg);
 				pthread_mutex_unlock(&semaforoLog);
 			}
