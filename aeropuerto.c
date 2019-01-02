@@ -50,9 +50,10 @@ int numeroAleatorio(int min, int max);
 struct usuario {
 	pthread_t usuarioHilo;
 	int id;  //Va de 1 a USUARIOS
+	int atendido;
 	int ha_Facturado;
-	int puesto_Asignado;
-	int esperando_Seguridad
+	char tipo;
+	int esperando_Seguridad;
 };
 
 struct usuario *punteroUsuarios;
@@ -133,6 +134,43 @@ int main() {
 	}
 
 	return 0;
+}
+
+
+void nuevoUsuario (int sig){
+
+	if(signal(SIGUSR1,nuevoUsuario)==SIG_ERR){
+		exit(-1);
+	}
+	if(signal(SIGUSR2,nuevoUsuario)==SIG_ERR){
+		exit(-1);
+	}
+	
+	usuariosActualesTotal++;
+
+	pthread_mutex_lock(&entradaFacturacion);
+	if (contadorUsuarios < USUARIOS){
+
+		//Iniciar variables
+		contadorUsuarios[contadorUsuarios].id = contadorUsuarios+1;
+		contadorUsuarios[contadorUsuarios].atendido = 0;
+
+		if (sig == 10) {  //SIGUSR1
+			contadorUsuarios[contadorUsuarios].tipo = nuevoUsuarioNormal;
+		} 
+		if (sig == 12) {  //SIGUSR2
+			contadorUsuarios[contadorUsuarios].tipo = nuevoUsuarioVip;
+		}
+
+		//contadorUsuarios[contadorUsuarios].seguridad = 0;
+
+		//Creamos el hilo de usuario
+		pthread_create(&contadorUsuarios[contadorUsuarios].usuarioHilo, NULL, AccionesUsuario, (void *)&contadorUsuarios[contadorUsuarios].id);
+
+		contadorUsuarios++;
+	}
+	pthread_mutex_unlock(&entradaFacturacion);
+
 }
 
 
