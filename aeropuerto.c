@@ -27,8 +27,9 @@ int embarca;
 int usuariosAtentidosPuestos[PUESTOS]; //Pasajeros atendidos por cada puesto
 int idUsuarioEsperando; //Usuarios sin atender
 int colaPuestos[USUARIOS]; //Pasajeros en una cola unica
-int usuariosAtendiendo;
-int usuariosActualesTotal;
+int primerPuestoCola; //De 0 a USUARIOS-1
+//int usuariosAtendiendo;
+int usuariosTotal;
 int finalizaPrograma;
 FILE *logFile;
 char *logFileName = "registroTiempos.log";
@@ -50,9 +51,10 @@ int numeroAleatorio(int min, int max);
 struct usuario {
 	pthread_t usuarioHilo;
 	int id;  //Va de 1 a USUARIOS
-	int atendido;
+	int atendidoFacturacion;
+	int atendidoSeguridad;
 	int ha_Facturado;
-	char tipo;
+	int tipo; //1 para normal, 2 para vip
 	int esperando_Seguridad;
 };
 
@@ -64,8 +66,8 @@ int main() {
 	pthread_t puesto1, puesto2, puestoSeguridad;
 	int idPuesto1, idPuesto2, idPuestoSeguridad;
 
-	int usuariosAtendiendo = 0;
-	int usuariosActualesTotal = 0;
+	//int usuariosAtendiendo = 0;
+	int usuariosTotal = 0;
 
 	if(signal(SIGUSR1, nuevoUsuarioNormal) == SIG_ERR){
 		perror("Llamada a signal.");
@@ -95,6 +97,7 @@ int main() {
 	idPuesto2 = 2;
 	contadorUsuarios = 0;  //Va de 0 a USUARIOS-1
 	embarcar = 0;
+	primerPuestoCola = 0;
 	//Igual hay que inicializar los que están esperando por seguridad
 
 
@@ -146,14 +149,15 @@ void nuevoUsuario (int sig){
 		exit(-1);
 	}
 	
-	usuariosActualesTotal++;
+	usuariosTotal++;
 
 	pthread_mutex_lock(&entradaFacturacion);
 	if (contadorUsuarios < USUARIOS){
 
 		//Iniciar variables
 		contadorUsuarios[contadorUsuarios].id = contadorUsuarios+1;
-		contadorUsuarios[contadorUsuarios].atendido = 0;
+		contadorUsuarios[contadorUsuarios].atendidoFacturacion = 0;
+		contadorUsuarios[contadorUsuarios].atendidoSeguridad = 0;
 
 		if (sig == 10) {  //SIGUSR1
 			contadorUsuarios[contadorUsuarios].tipo = nuevoUsuarioNormal;
@@ -169,6 +173,7 @@ void nuevoUsuario (int sig){
 
 		contadorUsuarios++;
 	}
+
 	pthread_mutex_unlock(&entradaFacturacion);
 
 }
@@ -195,9 +200,10 @@ void *AccionesUsuario(void *arg){
 	pthread_mutex_unlock(&semaforoCola);
 	
 	//Qué hace el usuario mientras espera
-	while(punteroUsuarios[idUsuario-1].ha_Facturado == 0){
+	while(punteroUsuarios[idUsuario-1].atendidoFacturacion == 0){
 	    int estadoAleatorio = numeroAleatorio(1, 100);
 	    
+	    //Faltan los 3 segundos 
 	    if(estadoAleatorio<=20){ //Comprobar si se cansa de esperar
 	        pthread_mutex_lock(&semaforoLog);
 	        sprintf(id, "usuario%d", idUsuario);
@@ -223,22 +229,36 @@ void *AccionesUsuario(void *arg){
 	    }
 	}
 
+	//Esperando a terminar de ser atendido...
+	//COMPROBAR SI ESTA BIEN ESTO
+	while(punteroUsuarios[idUsuario-1].atendidoFacturacion == 1) {  
+		sleep(1);
+	}
 
 	//Comprobar si ha facturado ya o no
 	if(punteroUsuarios[idUsuario-1].ha_Facturado == 1) { //Si ha facturado
     	pthread_mutex_lock(&entradaSeguridad);
-        pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
+        contadorUsuarios--; //Liberamos la cola de facturacion
+        while(punteroUsuarios[idUsuario-1].atendidoSeguridad == 1) {  
+			sleep(1);
+		}	
     	pthread_mutex_unlock(&entradaSeguridad); 
-    /*
+    
     //No sé cómo van estos dos logs
     	pthread_mutex_lock(&semaforoLog);
-    	//TODO log deja el control
+    	sprintf(id, "usuario%d", idUsuario);
+		sprintf(msg, "Deja el control de seguridad");
+		writeLogMessage(id, msg);
     	pthread_mutex_unlock(&semaforoLog);
        
+       	printf("Usuario %d va a embarcar\n", idUsuario);
+
         pthread_mutex_lock(&semaforoLog);
-    	//TODO log mensaje
+    	sprintf(id, "usuario%d", idUsuario);
+		sprintf(msg, "Va a embarcar");
+		writeLogMessage(id, msg);
     	pthread_mutex_unlock(&semaforoLog);
-	*/
+	
 	} else if(punteroUsuarios[idUsuario-1].ha_Facturado == 0){ //No ha facturado
 	    pthread_mutex_lock(&semaforoLog);
     	sprintf(id, "usuario%d", idUsuario);
@@ -249,6 +269,102 @@ void *AccionesUsuario(void *arg){
     	pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
 	}
 }
+
+
+void *AccionesFacturador(void *arg){
+	char id[10];
+	char msg[100];
+    int idPuesto = *(int *)arg;
+    int eventoAleatorio, duermeAleatorio;
+    int i = 0, j = 0;
+
+    while(1){
+		pthread_mutex_lock(&semaforoCola);
+		
+		j = 0;
+
+		//Comprueba los usuarios que tiene que atender (normales o vips)
+		while(j < USUARIOS && (colaPuestos[(j+primerPuestoCola)%USUARIOS] == 0 || colaPuestos[(j+primerPuestoCola)%USUARIOS] != 0 && punteroUsuarios[colaPuestos[(j+primerPuestoCola)%USUARIOS]-1].atendidoFacturacion == 1 || colaPuestos[(j+primerPuestoCola)%USUARIOS] != 0 && punteroUsuarios[colaPuestos[(j+primerPuestoCola)%USUARIOS]-1].puesto_Asignado != idPuesto)) {
+			j++;
+		}
+
+		if((idPuesto == 2) && (j >= USUARIOS){
+			if (colaPuestos[(j+primerPuestoCola)%USUARIOS] == 0 || punteroUsuarios[colaPuestos[(j+primerPuestoCola)%USUARIOS]-1].ha_Facturado!=0 || colaPuestos[(j+primerPuestoCola)%USUARIOS] != 0 && punteroUsuarios[colaPuestos[(j+primerPuestoCola)%USUARIOS]-1].puesto_Asignado != idPuesto) { //no hay atletas esperando en nuestra cola, buscamos en otras
+				//No hay VIPS, coge un usuario de cualquier cola
+				j = 0;
+				while(j < USUARIOS && (colaPuestos[(j+primerPuestoCola)%USUARIOS] == 0 || colaPuestos[(j+primerPuestoCola)%USUARIOS] != 0 && punteroUsuarios[colaPuestos[(j+primerPuestoCola)%USUARIOS]-1].ha_Facturado!=0)) {
+					j++;
+				}
+				if (colaPuestos[(j+primerPuestoCola)%USUARIOS] == 0 || punteroUsuarios[colaPuestos[(j+primerPuestoCola)%USUARIOS]-1].ha_Facturado!=0) { //No hay usuarios esperando
+					j = -1;
+				}
+			}
+		} else {
+			j = -1
+		} 
+
+		if(j == -1){
+			//Esperamos por nuevos usuarios
+			pthread_mutex_unlock(&semaforoCola);
+			sleep(1);
+		} else {
+			i = colaPuestos[(j+primerPuestoCola)%USUARIOS]-1;
+
+			usuariosAtentidosPuestos[idPuesto]++; //Usuarios en los puestos
+
+			punteroUsuarios[i].atendidoFacturacion = 1;
+			pthread_mutex_unlock(&semaforoCola);
+
+			//Calculamos comportamientos
+			comportamientoAleatorio = generarAleatorio(1, 100);
+
+			//Facturación
+			pthread_mutex_lock(&semaforoLog);
+			sprintf(id, "Puesto%d", idPuesto);
+			sprintf(msg, "usuario_%d facturando", colaPuestos[i]);
+			writeLogMessage(id, msg);
+			pthread_mutex_unlock(&semaforoLog);
+
+			if (eventoAleatorio <= 80) {  //Facturacion correcta
+				duermeAleatorio = generarAleatorio(1, 4);
+				sleep(duermeAleatorio);
+				punteroUsuarios[i].ha_Facturado = 1;
+
+				pthread_mutex_lock(&semaforoLog);
+				sprintf(id, "usuario_%d", colaPuestos[i]);
+				sprintf(msg, "Ha facturado, todo correcto, tiempo = %d", duermeAleatorio);
+				writeLogMessage(id, msg);
+				pthread_mutex_unlock(&semaforoLog);
+
+			} else if (eventoAleatorio <= 90 ){  //Exceso de peso
+				duermeAleatorio = generarAleatorio(2, 6);
+				sleep(duermeAleatorio);
+				punteroUsuarios[i].ha_Facturado = 1;
+
+				pthread_mutex_lock(&semaforoLog);
+				sprintf(id, "usuario_%d", colaPuestos[i]);
+				sprintf(msg, "Ha facturado pero tiene un exceso de peso, tiempo = %d", duermeAleatorio);
+				writeLogMessage(id, msg);
+				pthread_mutex_unlock(&semaforoLog);
+
+			} else {  //Visado no esta en regla
+				duermeAleatorio = generarAleatorio(6, 10);
+				sleep(duermeAleatorio);
+
+				pthread_mutex_lock(&semaforoLog);
+				sprintf(id, "usuario_%d", colaPuestos[i]);
+				sprintf(msg, "No tiene el visado en regla y no puede facturar, tiempo = %d", duermeAleatorio);
+				writeLogMessage(id, msg);
+				pthread_mutex_unlock(&semaforoLog);
+			}
+
+		}
+
+	}
+}
+
+
+
 
 //FALTAN COSAS
 void *AccionesAgenteSeguridad (void *arg){
