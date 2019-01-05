@@ -50,6 +50,7 @@ int numeroAleatorio(int min, int max);
 
 struct usuario {
 	pthread_t usuarioHilo;
+	//pthread_t ganasDeIrAlBanho; hilo que comprueba si tiene ganas de ir al baño.
 	int id;  //Va de 1 a USUARIOS
 	int atendidoFacturacion;
 	int atendidoSeguridad;
@@ -170,6 +171,8 @@ void nuevoUsuario (int sig){
 
 		//Creamos el hilo de usuario
 		pthread_create(&contadorUsuarios[contadorUsuarios].usuarioHilo, NULL, AccionesUsuario, (void *)&contadorUsuarios[contadorUsuarios].id);
+		//¿Crear un hilo para comprobar cada 3 segundos si se tiene ganas de ir al baño?
+		//pthread_create(&contadorUsuarios[contadorUsuarios].ganasDeIrAlBanho, NULL, GanasDeIrAlBanho, (void *)&contadorUsuarios[contadorUsuarios].id);
 
 		contadorUsuarios++;
 	}
