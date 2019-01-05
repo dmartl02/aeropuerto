@@ -237,12 +237,13 @@ void *AccionesUsuario(void *arg){
 
 	//Comprobar si ha facturado ya o no
 	if(punteroUsuarios[idUsuario-1].ha_Facturado == 1) { //Si ha facturado
-    	pthread_mutex_lock(&entradaSeguridad);
+    	pthread_mutex_lock(&semaforoCola); //TODO comrpobar que semaforo usar aqui
         contadorUsuarios--; //Liberamos la cola de facturacion
+	primerPuestoCola++%USUARIOS; //Se incrementa el primer puesto de la cola
         while(punteroUsuarios[idUsuario-1].atendidoSeguridad == 1) {  
 			sleep(1);
 		}	
-    	pthread_mutex_unlock(&entradaSeguridad); 
+    	pthread_mutex_unlock(&semaforoCola); 
     
     //No sé cómo van estos dos logs
     	pthread_mutex_lock(&semaforoLog);
@@ -392,7 +393,6 @@ void *AccionesAgenteSeguridad (void *arg){
 	i = 0;
 	int atendidoControl = 0;
 	int eventoControlAleatorio, duermeControlAleatorio;
-	//pthread_mutex_lock(&entradaSeguridad); ¿Aquí es necesario?
 
 	while(i<numUsuarios && seHaAtendidoAAlguien!=1) { //TODO QUEDARSE ESPERANDO A QUE HAYA ALGUIEN
 	    if(punteroUsuarios[i].esperando_Seguridad){
@@ -424,7 +424,8 @@ void *AccionesAgenteSeguridad (void *arg){
 				punteroUsuarios[i].atendidoControl = 1;
 
 				pthread_mutex_lock(&semaforoLog);
-				//Aqui habria que usar ya la cola de la seguridad sprintf(id, "Usuario_%d", cola[i]);
+				//Aqui habria que usar ya la cola de la seguridad 
+				sprintf(id, "Usuario_%d", cola[i]);
 				sprintf(msg, "Es inspeccionado en el control, tiempo = %d", duermeControlAleatorio);
 				writeLogMessage(id, msg);
 				pthread_mutex_unlock(&semaforoLog);
