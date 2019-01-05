@@ -396,7 +396,9 @@ void *AccionesAgenteSeguridad (void *arg){
 
 	while(i<numUsuarios && seHaAtendidoAAlguien!=1) { //TODO QUEDARSE ESPERANDO A QUE HAYA ALGUIEN
 	    if(punteroUsuarios[i].esperando_Seguridad){
-
+		
+		pthread_mutex_lock(&entradaSeguridad);    
+		    
 	    	pthread_mutex_lock(&semaforoLog);
        		sprintf(id, "Usuario_%d", punteroUsuarios[i].id);
        		sprintf(msg, "Entra al control de seguridad");
@@ -434,8 +436,10 @@ void *AccionesAgenteSeguridad (void *arg){
        		sprintf(msg, "Abandona el control de seguridad");
        		writeLogMessage(id, msg);
        		pthread_mutex_unlock(&semaforoLog);
+		   
+		pthread_mutex_unlock(&entradaSeguridad); 
 
-       	}
+       		}
 	}		
 }
 
