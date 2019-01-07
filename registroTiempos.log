@@ -1,4 +1,19 @@
-[07/01/19 22:23:07] Bienvenido: Aeropuerto Carles Puigdemont
-[07/01/19 22:23:20] Usuario_1: Ha llegado al aeropuerto
-[07/01/19 22:23:23] Puesto2: Usuario_1 facturando
-[07/01/19 22:23:25] Usuario_1: Ha facturado, todo correcto, tiempo = 2
+[08/01/19 00:49:22] Bienvenido: Aeropuerto Carles Puigdemont
+[08/01/19 00:49:39] Usuario_1: Ha llegado al aeropuerto
+[08/01/19 00:49:41] Puesto2: Usuario_1 facturando
+[08/01/19 00:49:42] Usuario_2: Ha llegado al aeropuerto
+[08/01/19 00:49:42] Usuario_1: Ha facturado, todo correcto, tiempo = 1
+[08/01/19 00:49:44] Puesto2: Usuario_2 facturando
+[08/01/19 00:49:45] Usuario_1: Entra al control de seguridad
+[08/01/19 00:49:45] Usuario_2: Ha facturado, todo correcto, tiempo = 1
+[08/01/19 00:49:47] Usuario_1: Pasa el control de seguridad, tiempo = 2
+[08/01/19 00:49:47] Usuario_1: Abandona el control de seguridad y va a embarcar.
+[08/01/19 00:49:47] Usuario_1: Deja el control de seguridad
+[08/01/19 00:49:47] Usuario_1: Va a embarcar
+[08/01/19 00:49:48] Usuario_2: Entra al control de seguridad
+[08/01/19 00:49:49] Usuario_3: Ha llegado al aeropuerto
+[08/01/19 00:49:52] Puesto1: Usuario_3 facturando
+[08/01/19 00:49:53] Usuario_2: El aeropuerto va a cerrar. Me voy a casa.
+[08/01/19 00:49:53] Usuario_3: El aeropuerto va a cerrar. Me voy a casa.
+[08/01/19 00:49:53] Información: Han sido atendidos 0 usuarios por puesto1 y 2 usuarios por puesto2
+[08/01/19 00:49:53] Final del programa: El aeropuerto ha cerrado

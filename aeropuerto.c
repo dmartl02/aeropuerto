@@ -56,7 +56,8 @@ struct usuario {
 	int ganasDeIrAlBanho;
 	int puesto_Asignado;
 	int puestoCola;
-
+	int abandona;
+	int saleFacturacion;
 };
 
 struct usuario *punteroUsuarios;
@@ -163,6 +164,8 @@ void nuevoUsuario (int sig){
 		punteroUsuarios[usuariosTotal].ganasDeIrAlBanho = 0;
 		punteroUsuarios[usuariosTotal].esperando_Seguridad = 0;
 		punteroUsuarios[usuariosTotal].puestoCola = 0;
+		punteroUsuarios[usuariosTotal].abandona = 0;
+		punteroUsuarios[usuariosTotal].saleFacturacion = 0;
 
 		if (sig == 10) {  //SIGUSR1
 			punteroUsuarios[usuariosTotal].tipo = 1;
@@ -220,17 +223,14 @@ void *AccionesUsuario(void *arg){
 	    int estadoAleatorio = generarAleatorio(1, 100);
 	    
 	    //Faltan los 3 segundos 
-	    if(estadoAleatorio<=20){ //Comprobar si se cansa de esperar
-	        pthread_mutex_lock(&semaforoLog);
-	        sprintf(id, "Usuario_%d", idUsuario);
-			sprintf(msg, "Se cansa de esperar y se va del aeropuerto");
-			writeLogMessage(id, msg);
-	        pthread_mutex_unlock(&semaforoLog);
-          
-          	//Se libera espacio en la cola
-          	idUsuarioEsperando[idUsuario-1] = 0;
-          	
+	    if((estadoAleatorio<=20) && (punteroUsuarios[idUsuario-1].atendidoFacturacion != 1)){ //Comprobar si se cansa de esperar
+
+	    	punteroUsuarios[idUsuario-1].abandona = 1;
+
+	    	//Se libera espacio en la cola
           	pthread_mutex_lock(&semaforoCola);
+          	idUsuarioEsperando[idUsuario-1] = 0;
+
           	for(int i = punteroUsuarios[idUsuario-1].puestoCola; i<usuariosFacturacion; i++){
           		colaPuestos[i] = colaPuestos[i+1];
           		punteroUsuarios[colaPuestos[i]].puestoCola--;
@@ -239,10 +239,35 @@ void *AccionesUsuario(void *arg){
           	usuariosFacturacion--;
           	pthread_mutex_unlock(&semaforoCola);
 
+
+
+	        pthread_mutex_lock(&semaforoLog);
+	        sprintf(id, "Usuario_%d", idUsuario);
+			sprintf(msg, "Se cansa de esperar y se va del aeropuerto");
+			writeLogMessage(id, msg);
+	        pthread_mutex_unlock(&semaforoLog);
+          
+          	
           	pthread_cancel(punteroUsuarios[idUsuario-1].banhoHilo);
 	        pthread_cancel(punteroUsuarios[idUsuario-1].usuarioHilo);
 
-	    } else if(punteroUsuarios[idUsuario-1].ganasDeIrAlBanho == 1){ //Comprobar si va al baño
+	    } else if((punteroUsuarios[idUsuario-1].ganasDeIrAlBanho == 1) && (punteroUsuarios[idUsuario-1].atendidoFacturacion != 1)){ //Comprobar si va al baño
+
+			punteroUsuarios[idUsuario-1].abandona = 1;
+
+			//Se libera espacio en la cola
+          	pthread_mutex_lock(&semaforoCola);
+          	idUsuarioEsperando[idUsuario-1] = 0;
+
+          	for(int i = punteroUsuarios[idUsuario-1].puestoCola; i<usuariosFacturacion; i++){
+          		colaPuestos[i] = colaPuestos[i+1];
+          		punteroUsuarios[colaPuestos[i]].puestoCola--;
+          	}
+
+          	usuariosFacturacion--;
+          	pthread_mutex_unlock(&semaforoCola);
+
+
 	        pthread_mutex_lock(&semaforoLog);
 	        sprintf(id, "Usuario_%d", idUsuario);
 			sprintf(msg, "Va al baño");
@@ -270,7 +295,7 @@ void *AccionesUsuario(void *arg){
 	pthread_cancel(punteroUsuarios[idUsuario-1].banhoHilo);
 
 	//Esperando a terminar de ser atendido...
-	while(punteroUsuarios[idUsuario-1].atendidoFacturacion == 1) {  
+	while(punteroUsuarios[idUsuario-1].saleFacturacion == 0) {  
 		sleep(1);
 	}
 
@@ -287,6 +312,7 @@ void *AccionesUsuario(void *arg){
 
 		pthread_mutex_lock(&entradaSeguridad);
 		puertaSeguridad = idUsuario;
+		
 
 		while(punteroUsuarios[idUsuario-1].atendidoSeguridad == 0){
 			sleep(1);
@@ -300,7 +326,6 @@ void *AccionesUsuario(void *arg){
 		writeLogMessage(id, msg);
     	pthread_mutex_unlock(&semaforoLog);
        
-       	printf("Usuario %d va a embarcar\n", idUsuario);
 
         pthread_mutex_lock(&semaforoLog);
     	sprintf(id, "Usuario_%d", idUsuario);
@@ -324,11 +349,9 @@ void *AccionesUsuario(void *arg){
 
 
 void *AccionesFacturador(void *arg){
-
 	char id[10];
 	char msg[100];
     int idPuesto = *(int *)arg;
-    printf("id: %d\n", idPuesto);
     int eventoAleatorio, duermeAleatorio;
     int i = 0, j = 0;
 
@@ -339,7 +362,7 @@ void *AccionesFacturador(void *arg){
 		j = 0;
 
 		//Comprueba los usuarios que tiene que atender (normales o vips)
-		while(j < USUARIOS && (colaPuestos[j] == 0 || colaPuestos[j] != 0 && punteroUsuarios[colaPuestos[j]-1].atendidoFacturacion == 1 || colaPuestos[j] != 0 && punteroUsuarios[colaPuestos[j]-1].tipo != idPuesto)) {
+		while(j < USUARIOS && (colaPuestos[j] == 0 || colaPuestos[j] != 0 && punteroUsuarios[colaPuestos[j]-1].atendidoFacturacion == 1 || colaPuestos[j] != 0 && punteroUsuarios[colaPuestos[j]-1].ha_Facturado == 1 || colaPuestos[j] != 0 && punteroUsuarios[colaPuestos[j]-1].tipo != idPuesto)) {
 			j++;
 		}
 
@@ -360,27 +383,28 @@ void *AccionesFacturador(void *arg){
 
 		pthread_mutex_unlock(&semaforoCola);
 
-		if(j == -1){
+		if((j == -1) || (punteroUsuarios[colaPuestos[j]-1].abandona==1)){
 			//Esperamos por nuevos usuarios
 			
 			sleep(1);
 		} else {
-			
+
+			punteroUsuarios[colaPuestos[j]-1].puesto_Asignado = idPuesto;
 			pthread_mutex_lock(&semaforoCola);
-			i = colaPuestos[j];			
+			i = colaPuestos[j]-1;			
 			pthread_mutex_unlock(&semaforoCola);
 
-			punteroUsuarios[i-1].atendidoFacturacion = 1;
-			punteroUsuarios[i-1].puesto_Asignado = idPuesto;
+
+			punteroUsuarios[i].atendidoFacturacion = 1;
+			
 
 			//Calculamos comportamientos
 			eventoAleatorio = generarAleatorio(1, 100);
 
 			//Facturación
-			printf("idPuesto: %d\n",idPuesto);
 			pthread_mutex_lock(&semaforoLog);
 			sprintf(id, "Puesto%d", idPuesto);
-			sprintf(msg, "Usuario_%d facturando", i);
+			sprintf(msg, "Usuario_%d facturando", i+1);
 			writeLogMessage(id, msg);
 			pthread_mutex_unlock(&semaforoLog);
 
@@ -390,8 +414,9 @@ void *AccionesFacturador(void *arg){
 				punteroUsuarios[i].ha_Facturado = 1;
 
 				pthread_mutex_lock(&semaforoLog);
-				sprintf(id, "Usuario_%d", i);
+				sprintf(id, "Usuario_%d", i+1);
 				sprintf(msg, "Ha facturado, todo correcto, tiempo = %d", duermeAleatorio);
+
 				writeLogMessage(id, msg);
 				pthread_mutex_unlock(&semaforoLog);
 
@@ -399,9 +424,9 @@ void *AccionesFacturador(void *arg){
 				duermeAleatorio = generarAleatorio(2, 6);
 				sleep(duermeAleatorio);
 				punteroUsuarios[i].ha_Facturado = 1;
-
+				
 				pthread_mutex_lock(&semaforoLog);
-				sprintf(id, "Usuario_%d", i);
+				sprintf(id, "Usuario_%d", i+1);
 				sprintf(msg, "Ha facturado pero tiene un exceso de peso, tiempo = %d", duermeAleatorio);
 				writeLogMessage(id, msg);
 				pthread_mutex_unlock(&semaforoLog);
@@ -411,12 +436,13 @@ void *AccionesFacturador(void *arg){
 				sleep(duermeAleatorio);
 
 				pthread_mutex_lock(&semaforoLog);
-				sprintf(id, "Usuario_%d", i);
+				sprintf(id, "Usuario_%d", i+1);
 				sprintf(msg, "No tiene el visado en regla y no puede facturar, tiempo = %d", duermeAleatorio);
 				writeLogMessage(id, msg);
 				pthread_mutex_unlock(&semaforoLog);
 			}
 
+			punteroUsuarios[i].saleFacturacion = 1;
 			usuariosAtentidosPuestos[idPuesto-1]++; //Usuarios en los puestos
 
 			//Descanso de los facturadores
@@ -436,9 +462,7 @@ void *AccionesFacturador(void *arg){
 				writeLogMessage(id, msg);
 				pthread_mutex_unlock(&semaforoLog);
 			}
-
 		}
-
 	}
 }
 
@@ -447,7 +471,6 @@ void *AccionesFacturador(void *arg){
 
 
 void *AccionesAgenteSeguridad (void *arg){
-
     char id[10];
 	char msg[100];
 	int numUsuarios = *(int *)arg;
@@ -455,53 +478,52 @@ void *AccionesAgenteSeguridad (void *arg){
 	int atendidoControl = 0;
 	int eventoControlAleatorio, duermeControlAleatorio;
 
-	while(puertaSeguridad != 0){ //Quedarse esperando a que haya alguien
+	while(1){ //Quedarse esperando a que haya alguien
+
+	    if(puertaSeguridad != 0){
+		    i = puertaSeguridad-1;    
+		    
+	    	pthread_mutex_lock(&semaforoLog);
+	   		sprintf(id, "Usuario_%d", punteroUsuarios[i].id);
+	   		sprintf(msg, "Entra al control de seguridad");
+	   		writeLogMessage(id, msg);
+	   		pthread_mutex_unlock(&semaforoLog);
+
+	       	eventoControlAleatorio = generarAleatorio(1,100);
+
+	       	if(eventoControlAleatorio <= 60){ //Pasa el control sin problemas
+	       		duermeControlAleatorio = generarAleatorio(2,3);
+				sleep(duermeControlAleatorio);
+				
+				pthread_mutex_lock(&semaforoLog);
+				sprintf(id, "Usuario_%d", punteroUsuarios[i].id);
+				sprintf(msg, "Pasa el control de seguridad, tiempo = %d", duermeControlAleatorio);
+				writeLogMessage(id, msg);
+				pthread_mutex_unlock(&semaforoLog);
+
+			} else { //Es inspeccionado en el control
+				duermeControlAleatorio = generarAleatorio(10,15);
+				sleep(duermeControlAleatorio);
+		
+				pthread_mutex_lock(&semaforoLog);
+				sprintf(id, "Usuario_%d", punteroUsuarios[i].id);
+				sprintf(msg, "Es inspeccionado en el control, tiempo = %d", duermeControlAleatorio);
+				writeLogMessage(id, msg);
+				pthread_mutex_unlock(&semaforoLog);
+			}
+
+			puertaSeguridad = 0;
+			idUsuarioEsperando[i] = 0;
 	    
-	    i = puertaSeguridad-1;
-	
-		//pthread_mutex_lock(&entradaSeguridad);    
-	    
-    	pthread_mutex_lock(&semaforoLog);
-   		sprintf(id, "Usuario_%d", punteroUsuarios[i].id);
-   		sprintf(msg, "Entra al control de seguridad");
-   		writeLogMessage(id, msg);
-   		pthread_mutex_unlock(&semaforoLog);
 
-       	eventoControlAleatorio = generarAleatorio(1,100);
-
-       	if(eventoControlAleatorio <= 60){ //Pasa el control sin problemas
-       		duermeControlAleatorio = generarAleatorio(2,3);
-			sleep(duermeControlAleatorio);
-			
-			pthread_mutex_lock(&semaforoLog);
+	    	pthread_mutex_lock(&semaforoLog);
 			sprintf(id, "Usuario_%d", punteroUsuarios[i].id);
-			sprintf(msg, "Pasa el control de seguridad, tiempo = %d", duermeControlAleatorio);
-			writeLogMessage(id, msg);
-			pthread_mutex_unlock(&semaforoLog);
+	   		sprintf(msg, "Abandona el control de seguridad y va a embarcar.");
+	   		writeLogMessage(id, msg);
+	   		pthread_mutex_unlock(&semaforoLog);
 
-		} else { //Es inspeccionado en el control
-			duermeControlAleatorio = generarAleatorio(10,15);
-			sleep(duermeControlAleatorio);
-	
-			pthread_mutex_lock(&semaforoLog);
-			sprintf(id, "Usuario_%d", punteroUsuarios[i].id);
-			sprintf(msg, "Es inspeccionado en el control, tiempo = %d", duermeControlAleatorio);
-			writeLogMessage(id, msg);
-			pthread_mutex_unlock(&semaforoLog);
+	   		punteroUsuarios[i].atendidoSeguridad = 1;
 		}
-
-		puertaSeguridad = 0;
-    
-
-    	pthread_mutex_lock(&semaforoLog);
-		printf(id, "Usuario_%d", punteroUsuarios[i].id);
-   		sprintf(msg, "Abandona el control de seguridad y va a embarcar.");
-   		writeLogMessage(id, msg);
-   		pthread_mutex_unlock(&semaforoLog);
-
-   		punteroUsuarios[i].atendidoSeguridad = 1;
-	   
-		//pthread_mutex_unlock(&entradaSeguridad); 
 	}		
 }
 
@@ -532,7 +554,7 @@ void finalizarPrograma(int sig){
 
 	for(int i=0; i<usuariosTotal; i++){
 		if (idUsuarioEsperando[i] != 0) { //Comprobar si queda algún usuario
-			sprintf(id, "Usuario_%d", idUsuarioEsperando[i]);
+			sprintf(id, "Usuario_%d", i+1);
 			sprintf(msg, "El aeropuerto va a cerrar. Me voy a casa.");
 			writeLogMessage(id, msg);
 			
@@ -568,6 +590,8 @@ void writeLogMessage(char *id, char *msg){
 	printf("###logFile:[%s] %s: %s\n", stnow, id, msg); 
 	fclose(logFile);	
 }
+
+
 
 //Generación de números aleatorios
 int generarAleatorio(int min, int max){
